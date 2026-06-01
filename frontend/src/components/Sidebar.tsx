@@ -6,6 +6,7 @@ interface SidebarProps {
 }
 
 const NAV_ITEMS = [
+  { id: 'overview', icon: '📊', label: 'Overview' },
   { id: 'system', icon: '⚙', label: 'Sistema' },
   { id: 'pihole', icon: '🛡', label: 'Pi-hole' },
   { id: 'ha', icon: '🏠', label: 'Cômodos' },

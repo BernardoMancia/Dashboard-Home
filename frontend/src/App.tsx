@@ -9,12 +9,14 @@ import Login from './pages/Login';
 import ParticleBackground from './components/ParticleBackground';
 import Sidebar from './components/Sidebar';
 import StatusBar from './components/StatusBar';
+import OverviewPanel from './components/OverviewPanel';
 import SystemPanel from './components/SystemPanel';
 import PiHolePanel from './components/PiHolePanel';
 import HomeAssistantPanel from './components/HomeAssistantPanel';
 import SensorsPanel from './components/SensorsPanel';
 
 const PANEL_TITLES: Record<string, string> = {
+  overview: '📊 Overview — Visão Geral',
   system: '⚙ Sistema — Raspberry Pi',
   pihole: '🛡 Pi-hole — Segurança DNS',
   ha: '🏠 Cômodos & Dispositivos',
@@ -23,7 +25,7 @@ const PANEL_TITLES: Record<string, string> = {
 
 export default function App() {
   const { token, checking, login, logout, isAuthenticated } = useAuth();
-  const [activePanel, setActivePanel] = useState('system');
+  const [activePanel, setActivePanel] = useState('overview');
 
   const system = useSystem(token);
   const pihole = usePihole(token);
@@ -77,6 +79,17 @@ export default function App() {
           panelTitle={PANEL_TITLES[activePanel] || ''}
         />
         <div className="content-area">
+          {activePanel === 'overview' && (
+            <OverviewPanel
+              system={system}
+              pihole={pihole}
+              haEntities={ha.controllable}
+              sensors={ha.sensors}
+              rooms={rooms}
+              getDisplayName={getDisplayName}
+              onToggle={handleToggle}
+            />
+          )}
           {activePanel === 'system' && <SystemPanel data={system} />}
           {activePanel === 'pihole' && <PiHolePanel data={pihole} />}
           {activePanel === 'ha' && (
