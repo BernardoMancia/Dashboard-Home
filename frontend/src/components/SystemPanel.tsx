@@ -25,22 +25,22 @@ function GaugeCircle({ value, max = 100, color, label, unit = '%' }: {
   value: number; max?: number; color: string; label: string; unit?: string;
 }) {
   const pct = Math.min((value / max) * 100, 100);
-  const r = 50;
+  const r = 52;
   const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
 
   return (
     <div className="gauge-container">
-      <svg width="120" height="120" viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+      <svg width="130" height="130" viewBox="0 0 130 130">
+        <circle cx="65" cy="65" r={r} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="10" />
         <circle
-          cx="60" cy="60" r={r} fill="none"
+          cx="65" cy="65" r={r} fill="none"
           stroke={color}
-          strokeWidth="8"
+          strokeWidth="10"
           strokeLinecap="round"
           strokeDasharray={circ}
           strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 0.8s ease, stroke 0.5s ease' }}
+          style={{ transition: 'stroke-dashoffset 0.8s ease, stroke 0.5s ease', filter: `drop-shadow(0 0 6px ${color})` }}
         />
       </svg>
       <div className="gauge-value">
@@ -57,6 +57,12 @@ function getTempColor(temp: number) {
   return 'var(--neon-red)';
 }
 
+function getCpuColor(cpu: number) {
+  if (cpu < 50) return 'var(--neon-cyan)';
+  if (cpu < 80) return 'var(--neon-amber)';
+  return 'var(--neon-red)';
+}
+
 export default function SystemPanel({ data }: Props) {
   return (
     <div style={{ position: 'relative' }}>
@@ -68,24 +74,20 @@ export default function SystemPanel({ data }: Props) {
 
       <h2 className="section-title">Métricas do Raspberry Pi</h2>
 
-      <div className="panel-grid" style={{ marginBottom: 24 }}>
-        <div className="glass-panel metric-card neon-glow-green animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <div className="metric-header">
-            <div className="metric-icon" style={{ background: 'var(--neon-green-dim)', color: 'var(--neon-green)' }}>⏱</div>
-          </div>
-          <div className="metric-value" style={{ color: 'var(--neon-green)' }}>
-            {formatUptime(data.uptime)}
-          </div>
-          <div className="metric-label">Uptime</div>
+      <div className="glass-panel uptime-display animate-slide-up" style={{ marginBottom: 20, animationDelay: '0.05s' }}>
+        <div className="uptime-icon">⏱</div>
+        <div>
+          <div className="uptime-value">{formatUptime(data.uptime)}</div>
+          <div className="uptime-label">Tempo Online</div>
         </div>
+      </div>
 
-        <div className="glass-panel metric-card animate-slide-up" style={{ animationDelay: '0.2s' }}>
+      <div className="panel-grid" style={{ marginBottom: 20 }}>
+        <div className="glass-panel metric-card accent-cyan animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <div className="metric-header">
             <div className="metric-icon" style={{ background: 'var(--neon-cyan-dim)', color: 'var(--neon-cyan)' }}>💾</div>
           </div>
-          <div className="metric-value" style={{ color: 'var(--neon-cyan)' }}>
-            {data.ram.percent}%
-          </div>
+          <div className="metric-value">{data.ram.percent}%</div>
           <div className="metric-label">RAM — {formatBytes(data.ram.used)} / {formatBytes(data.ram.total)}</div>
           <div className="progress-bar-track">
             <div
@@ -93,22 +95,30 @@ export default function SystemPanel({ data }: Props) {
               style={{
                 width: `${data.ram.percent}%`,
                 background: data.ram.percent > 85
-                  ? 'var(--neon-red)'
+                  ? 'linear-gradient(90deg, var(--neon-red), var(--neon-magenta))'
                   : data.ram.percent > 60
-                    ? 'var(--neon-amber)'
-                    : 'var(--neon-cyan)',
+                    ? 'linear-gradient(90deg, var(--neon-amber), var(--neon-magenta))'
+                    : 'linear-gradient(90deg, var(--neon-cyan), var(--neon-blue))',
               }}
             />
           </div>
         </div>
+
+        <div className="glass-panel metric-card accent-green animate-slide-up" style={{ animationDelay: '0.15s' }}>
+          <div className="metric-header">
+            <div className="metric-icon" style={{ background: 'var(--neon-green-dim)', color: 'var(--neon-green)' }}>📦</div>
+          </div>
+          <div className="metric-value">{formatBytes(data.ram.free)}</div>
+          <div className="metric-label">RAM Livre</div>
+        </div>
       </div>
 
       <div className="panel-grid">
-        <div className="glass-panel metric-card animate-slide-up" style={{ animationDelay: '0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <GaugeCircle value={data.cpuUsage} color="var(--neon-magenta)" label="CPU" />
+        <div className="glass-panel metric-card accent-magenta animate-slide-up" style={{ animationDelay: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 28 }}>
+          <GaugeCircle value={data.cpuUsage} color={getCpuColor(data.cpuUsage)} label="CPU" />
         </div>
 
-        <div className="glass-panel metric-card animate-slide-up" style={{ animationDelay: '0.4s', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div className="glass-panel metric-card accent-amber animate-slide-up" style={{ animationDelay: '0.25s', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 28 }}>
           <GaugeCircle value={data.temperature} max={85} color={getTempColor(data.temperature)} label="Temp" unit="°C" />
         </div>
       </div>
