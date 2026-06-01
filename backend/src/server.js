@@ -1,4 +1,4 @@
-import "dotenv/config";
+import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import { createServer } from "http";
@@ -9,6 +9,7 @@ import { setupWebSocket, sendToAgent } from "./wsHandler.js";
 import { getState } from "./store.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const {
   PORT = 3001,
