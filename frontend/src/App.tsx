@@ -3,6 +3,8 @@ import { useAuth } from './hooks/useAuth';
 import { useSystem } from './hooks/useSystem';
 import { usePihole } from './hooks/usePihole';
 import { useHA } from './hooks/useHA';
+import { useRooms } from './hooks/useRooms';
+import { useDeviceNames } from './hooks/useDeviceNames';
 import Login from './pages/Login';
 import ParticleBackground from './components/ParticleBackground';
 import Sidebar from './components/Sidebar';
@@ -10,11 +12,13 @@ import StatusBar from './components/StatusBar';
 import SystemPanel from './components/SystemPanel';
 import PiHolePanel from './components/PiHolePanel';
 import HomeAssistantPanel from './components/HomeAssistantPanel';
+import SensorsPanel from './components/SensorsPanel';
 
 const PANEL_TITLES: Record<string, string> = {
   system: '⚙ Sistema — Raspberry Pi',
   pihole: '🛡 Pi-hole — Segurança DNS',
-  ha: '🏠 Home Assistant — Automação',
+  ha: '🏠 Cômodos & Dispositivos',
+  sensors: '📡 Sensores & Monitoramento',
 };
 
 export default function App() {
@@ -24,6 +28,8 @@ export default function App() {
   const system = useSystem(token);
   const pihole = usePihole(token);
   const ha = useHA(token);
+  const { rooms, addRoom, updateRoom, deleteRoom, assignDevice, unassignDevice } = useRooms(token);
+  const { setCustomName, getDisplayName } = useDeviceNames(token);
 
   if (checking) {
     return (
@@ -41,10 +47,18 @@ export default function App() {
     return <Login onLogin={login} />;
   }
 
-  function handleHAToggle(entityId: string, currentState: string) {
+  function handleToggle(entityId: string, currentState: string) {
     const domain = entityId.split('.')[0];
     const service = currentState === 'on' ? 'turn_off' : 'turn_on';
     ha.sendCommand(domain, service, entityId);
+  }
+
+  function handleBrightness(entityId: string, brightness: number) {
+    ha.sendCommand('light', 'turn_on', entityId, { brightness });
+  }
+
+  function handleColor(entityId: string, rgb: [number, number, number]) {
+    ha.sendCommand('light', 'turn_on', entityId, { rgb_color: rgb });
   }
 
   return (
@@ -67,9 +81,25 @@ export default function App() {
           {activePanel === 'pihole' && <PiHolePanel data={pihole} />}
           {activePanel === 'ha' && (
             <HomeAssistantPanel
-              grouped={ha.grouped}
+              entities={ha.controllable}
               connected={ha.connected}
-              onToggle={handleHAToggle}
+              rooms={rooms}
+              getDisplayName={getDisplayName}
+              onToggle={handleToggle}
+              onBrightness={handleBrightness}
+              onColor={handleColor}
+              onAddRoom={addRoom}
+              onUpdateRoom={updateRoom}
+              onDeleteRoom={deleteRoom}
+              onAssignDevice={assignDevice}
+              onUnassignDevice={unassignDevice}
+              onRenameDevice={setCustomName}
+            />
+          )}
+          {activePanel === 'sensors' && (
+            <SensorsPanel
+              sensors={ha.sensors}
+              getDisplayName={getDisplayName}
             />
           )}
         </div>

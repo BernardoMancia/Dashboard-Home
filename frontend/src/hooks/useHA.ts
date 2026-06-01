@@ -8,6 +8,11 @@ export interface HAEntity {
   attributes: {
     friendly_name?: string;
     icon?: string;
+    brightness?: number;
+    rgb_color?: [number, number, number];
+    supported_color_modes?: string[];
+    unit_of_measurement?: string;
+    device_class?: string;
     [key: string]: unknown;
   };
   last_changed: string;
@@ -18,9 +23,10 @@ export interface HAData {
   states: HAEntity[];
 }
 
-const DOMAINS = ['light', 'switch', 'sensor', 'automation', 'climate', 'cover', 'fan', 'media_player'];
+const CONTROLLABLE = ['light', 'switch', 'automation', 'fan', 'cover', 'media_player', 'input_boolean', 'climate'];
+const SENSOR_DOMAINS = ['sensor', 'binary_sensor'];
 
-export function useHA(token: string | null, interval = 10000) {
+export function useHA(token: string | null, interval = 5000) {
   const [data, setData] = useState<HAData>({ connected: false, states: [] });
 
   useEffect(() => {
@@ -40,16 +46,16 @@ export function useHA(token: string | null, interval = 10000) {
     return () => clearInterval(id);
   }, [token, interval]);
 
-  const grouped = DOMAINS.reduce(
-    (acc, domain) => {
-      acc[domain] = data.states.filter((s) => s.entity_id.startsWith(`${domain}.`));
-      return acc;
-    },
-    {} as Record<string, HAEntity[]>
+  const controllable = data.states.filter((s) =>
+    CONTROLLABLE.some((d) => s.entity_id.startsWith(`${d}.`))
+  );
+
+  const sensors = data.states.filter((s) =>
+    SENSOR_DOMAINS.some((d) => s.entity_id.startsWith(`${d}.`))
   );
 
   const sendCommand = useCallback(
-    async (domain: string, service: string, entityId: string) => {
+    async (domain: string, service: string, entityId: string, serviceData?: Record<string, unknown>) => {
       if (!token) return;
       await fetch(`${API}/api/ha/command`, {
         method: 'POST',
@@ -57,11 +63,11 @@ export function useHA(token: string | null, interval = 10000) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ domain, service, entityId }),
+        body: JSON.stringify({ domain, service, entityId, serviceData }),
       });
     },
     [token]
   );
 
-  return { ...data, grouped, sendCommand };
+  return { ...data, controllable, sensors, sendCommand };
 }

@@ -175,11 +175,12 @@ async function collectHA() {
 
 async function handleCommand(msg) {
   if (msg.type === "ha_command") {
-    const { domain, service, entity_id } = msg.data;
+    const { domain, service, entity_id, service_data } = msg.data;
     try {
+      const payload = { entity_id, ...service_data };
       await axios.post(
         `${HA_URL}/api/services/${domain}/${service}`,
-        { entity_id },
+        payload,
         { headers: { Authorization: `Bearer ${HA_TOKEN}` } }
       );
       send({ type: "command_result", data: { ok: true, domain, service } });

@@ -7,6 +7,12 @@ import { fileURLToPath } from "url";
 import { initAuth, login, requireAuth } from "./auth.js";
 import { setupWebSocket, sendToAgent } from "./wsHandler.js";
 import { getState } from "./store.js";
+import {
+  getRooms,
+  saveRooms,
+  getCustomNames,
+  saveCustomNames,
+} from "./configStore.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
@@ -67,13 +73,13 @@ app.get("/api/ha/states", auth, (req, res) => {
 });
 
 app.post("/api/ha/command", auth, (req, res) => {
-  const { domain, service, entityId } = req.body;
+  const { domain, service, entityId, serviceData } = req.body;
   if (!domain || !service) {
     return res.status(400).json({ error: "domain e service obrigatórios" });
   }
   const sent = sendToAgent({
     type: "ha_command",
-    data: { domain, service, entity_id: entityId },
+    data: { domain, service, entity_id: entityId, service_data: serviceData },
   });
   if (!sent) {
     return res.status(503).json({ error: "Agent desconectado" });
@@ -90,6 +96,32 @@ app.post("/api/pihole/toggle", auth, (req, res) => {
   if (!sent) {
     return res.status(503).json({ error: "Agent desconectado" });
   }
+  res.json({ ok: true });
+});
+
+app.get("/api/config/rooms", auth, (req, res) => {
+  res.json(getRooms());
+});
+
+app.put("/api/config/rooms", auth, (req, res) => {
+  const rooms = req.body;
+  if (!Array.isArray(rooms)) {
+    return res.status(400).json({ error: "Body deve ser um array de rooms" });
+  }
+  saveRooms(rooms);
+  res.json({ ok: true });
+});
+
+app.get("/api/config/names", auth, (req, res) => {
+  res.json(getCustomNames());
+});
+
+app.put("/api/config/names", auth, (req, res) => {
+  const names = req.body;
+  if (typeof names !== "object" || Array.isArray(names)) {
+    return res.status(400).json({ error: "Body deve ser um objeto" });
+  }
+  saveCustomNames(names);
   res.json({ ok: true });
 });
 

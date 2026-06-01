@@ -8,7 +8,8 @@ interface SidebarProps {
 const NAV_ITEMS = [
   { id: 'system', icon: '⚙', label: 'Sistema' },
   { id: 'pihole', icon: '🛡', label: 'Pi-hole' },
-  { id: 'ha', icon: '🏠', label: 'Home Assistant' },
+  { id: 'ha', icon: '🏠', label: 'Cômodos' },
+  { id: 'sensors', icon: '📡', label: 'Sensores' },
 ];
 
 export default function Sidebar({ activePanel, onNavigate, connected, onLogout }: SidebarProps) {
