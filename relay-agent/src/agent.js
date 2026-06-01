@@ -6,8 +6,10 @@ const VPS_URL = process.env.VPS_URL || "ws://82.112.245.99:3001/ws/agent";
 const WS_SECRET_KEY = process.env.WS_SECRET_KEY || "";
 const HA_URL = process.env.HA_URL || "http://localhost:8123";
 const HA_TOKEN = process.env.HA_TOKEN || "";
-const PIHOLE_URL = process.env.PIHOLE_URL || "http://localhost/admin/api.php";
-const PIHOLE_TOKEN = process.env.PIHOLE_TOKEN || "";
+const PIHOLE_URL = process.env.PIHOLE_URL || "http://localhost:8080";
+const PIHOLE_PASSWORD = process.env.PIHOLE_PASSWORD || "";
+
+let piholeSID = null;
 
 const SYSTEM_INTERVAL = 5000;
 const SERVICE_INTERVAL = 10000;
@@ -94,24 +96,66 @@ function collectSystem() {
   };
 }
 
+async function piholeAuth() {
+  if (!PIHOLE_PASSWORD) return null;
+  try {
+    const res = await axios.post(`${PIHOLE_URL}/api/auth`, {
+      password: PIHOLE_PASSWORD,
+    });
+    if (res.data?.session?.sid) {
+      piholeSID = res.data.session.sid;
+      return piholeSID;
+    }
+  } catch (err) {
+    console.error("[Agent] Pi-hole auth error:", err.message);
+  }
+  return null;
+}
+
+function piholeHeaders() {
+  return piholeSID ? { sid: piholeSID } : {};
+}
+
 async function collectPihole() {
   try {
-    const [summary, overTime, topItems] = await Promise.all([
-      axios.get(`${PIHOLE_URL}?summary`),
-      axios.get(`${PIHOLE_URL}?overTimeData10mins`),
-      axios.get(
-        `${PIHOLE_URL}?topItems=10${PIHOLE_TOKEN ? `&auth=${PIHOLE_TOKEN}` : ""}`
-      ),
+    if (!piholeSID) await piholeAuth();
+    const headers = piholeHeaders();
+
+    const [summary, overTime] = await Promise.all([
+      axios.get(`${PIHOLE_URL}/api/stats/summary`, { headers }),
+      axios.get(`${PIHOLE_URL}/api/stats/overTime/history`, { headers }),
     ]);
+
+    let topQueries = {};
+    let topAds = {};
+    try {
+      const top = await axios.get(`${PIHOLE_URL}/api/stats/top_domains?count=10`, { headers });
+      topQueries = top.data?.top_domains || {};
+      const topBlocked = await axios.get(`${PIHOLE_URL}/api/stats/top_domains?blocked=true&count=10`, { headers });
+      topAds = topBlocked.data?.top_domains || {};
+    } catch {}
+
+    const s = summary.data;
     return {
-      ...summary.data,
-      status: summary.data.status || "unknown",
+      status: s?.blocking === "enabled" ? "enabled" : "disabled",
+      domains_being_blocked: s?.gravity?.domains_being_blocked || 0,
+      dns_queries_today: s?.queries?.total || 0,
+      ads_blocked_today: s?.queries?.blocked || 0,
+      ads_percentage_today: s?.queries?.percent_blocked || 0,
+      unique_clients: s?.clients?.total || 0,
+      queries_forwarded: s?.queries?.forwarded || 0,
+      queries_cached: s?.queries?.cached || 0,
       overTime: overTime.data || {},
-      topQueries: topItems.data?.top_queries || {},
-      topAds: topItems.data?.top_ads || {},
+      topQueries,
+      topAds,
     };
   } catch (err) {
-    console.error("[Agent] Pi-hole error:", err.message);
+    if (err.response?.status === 401) {
+      piholeSID = null;
+      console.error("[Agent] Pi-hole session expired, will re-auth next cycle");
+    } else {
+      console.error("[Agent] Pi-hole error:", err.message);
+    }
     return null;
   }
 }
@@ -148,12 +192,15 @@ async function handleCommand(msg) {
   }
 
   if (msg.type === "pihole_command") {
-    const { action, seconds } = msg.data;
+    const { action } = msg.data;
     try {
-      let url = `${PIHOLE_URL}?${action}`;
-      if (action === "disable" && seconds) url += `=${seconds}`;
-      if (PIHOLE_TOKEN) url += `&auth=${PIHOLE_TOKEN}`;
-      await axios.get(url);
+      if (!piholeSID) await piholeAuth();
+      const blocking = action === "enable" ? true : false;
+      await axios.post(
+        `${PIHOLE_URL}/api/dns/blocking`,
+        { blocking, timer: msg.data.seconds || null },
+        { headers: piholeHeaders() }
+      );
       send({ type: "command_result", data: { ok: true, action } });
     } catch (err) {
       send({
