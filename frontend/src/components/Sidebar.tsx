@@ -3,23 +3,28 @@ interface SidebarProps {
   onNavigate: (panel: string) => void;
   connected: boolean;
   onLogout: () => void;
+  isAdmin: boolean;
+  username: string;
 }
 
 const NAV_ITEMS = [
-  { id: 'overview', icon: '📊', label: 'Overview' },
-  { id: 'system', icon: '⚙', label: 'Sistema' },
-  { id: 'pihole', icon: '🛡', label: 'Pi-hole' },
-  { id: 'ha', icon: '🏠', label: 'Cômodos' },
-  { id: 'sensors', icon: '📡', label: 'Sensores' },
+  { id: 'overview', icon: '📊', label: 'Overview', adminOnly: false },
+  { id: 'system', icon: '⚙', label: 'Sistema', adminOnly: false },
+  { id: 'pihole', icon: '🛡', label: 'Pi-hole', adminOnly: false },
+  { id: 'ha', icon: '🏠', label: 'Cômodos', adminOnly: false },
+  { id: 'sensors', icon: '📡', label: 'Sensores', adminOnly: false },
+  { id: 'users', icon: '👥', label: 'Usuários', adminOnly: true },
 ];
 
-export default function Sidebar({ activePanel, onNavigate, connected, onLogout }: SidebarProps) {
+export default function Sidebar({ activePanel, onNavigate, connected, onLogout, isAdmin, username }: SidebarProps) {
+  const items = NAV_ITEMS.filter((i) => !i.adminOnly || isAdmin);
+
   return (
     <aside className="sidebar">
       <div className="sidebar-logo" title="Dash Geral">⛊</div>
 
       <nav className="sidebar-nav">
-        {NAV_ITEMS.map((item) => (
+        {items.map((item) => (
           <button
             key={item.id}
             className={`sidebar-btn ${activePanel === item.id ? 'active' : ''}`}
@@ -32,6 +37,9 @@ export default function Sidebar({ activePanel, onNavigate, connected, onLogout }
       </nav>
 
       <div className="sidebar-bottom">
+        <div className="sidebar-user" title={`${username} (${isAdmin ? 'admin' : 'user'})`}>
+          {username.charAt(0).toUpperCase()}
+        </div>
         <div
           className={`status-dot ${connected ? 'online' : 'offline'}`}
           title={connected ? 'Agent Online' : 'Agent Offline'}

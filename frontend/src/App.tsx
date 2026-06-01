@@ -14,6 +14,7 @@ import SystemPanel from './components/SystemPanel';
 import PiHolePanel from './components/PiHolePanel';
 import HomeAssistantPanel from './components/HomeAssistantPanel';
 import SensorsPanel from './components/SensorsPanel';
+import UsersPanel from './components/UsersPanel';
 
 const PANEL_TITLES: Record<string, string> = {
   overview: '📊 Overview — Visão Geral',
@@ -21,10 +22,11 @@ const PANEL_TITLES: Record<string, string> = {
   pihole: '🛡 Pi-hole — Segurança DNS',
   ha: '🏠 Cômodos & Dispositivos',
   sensors: '📡 Sensores & Monitoramento',
+  users: '👥 Gerenciamento de Usuários',
 };
 
 export default function App() {
-  const { token, checking, login, logout, isAuthenticated } = useAuth();
+  const { token, checking, login, logout, isAuthenticated, isAdmin, username } = useAuth();
   const [activePanel, setActivePanel] = useState('overview');
 
   const system = useSystem(token);
@@ -71,6 +73,8 @@ export default function App() {
         onNavigate={setActivePanel}
         connected={system.connected}
         onLogout={logout}
+        isAdmin={isAdmin}
+        username={username}
       />
       <div className="main-area">
         <StatusBar
@@ -114,6 +118,9 @@ export default function App() {
               sensors={ha.sensors}
               getDisplayName={getDisplayName}
             />
+          )}
+          {activePanel === 'users' && isAdmin && (
+            <UsersPanel token={token} />
           )}
         </div>
       </div>

@@ -7,6 +7,8 @@ export function useAuth() {
     () => localStorage.getItem('dash_token')
   );
   const [checking, setChecking] = useState(true);
+  const [role, setRole] = useState<string>('user');
+  const [username, setUsername] = useState<string>('');
 
   useEffect(() => {
     if (!token) {
@@ -21,6 +23,14 @@ export function useAuth() {
         if (!r.ok) {
           localStorage.removeItem('dash_token');
           setToken(null);
+          return null;
+        }
+        return r.json();
+      })
+      .then((data) => {
+        if (data) {
+          setRole(data.role || 'user');
+          setUsername(data.user || '');
         }
       })
       .catch(() => {
@@ -38,7 +48,9 @@ export function useAuth() {
   const logout = useCallback(() => {
     localStorage.removeItem('dash_token');
     setToken(null);
+    setRole('user');
+    setUsername('');
   }, []);
 
-  return { token, checking, login, logout, isAuthenticated: !!token };
+  return { token, checking, login, logout, isAuthenticated: !!token, role, username, isAdmin: role === 'admin' };
 }

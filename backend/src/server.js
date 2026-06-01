@@ -4,7 +4,16 @@ import cors from "cors";
 import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
-import { initAuth, login, requireAuth } from "./auth.js";
+import {
+  initAuth,
+  login,
+  requireAuth,
+  requireAdmin,
+  getUsers,
+  addUser,
+  updateUser,
+  deleteUser,
+} from "./auth.js";
 import { setupWebSocket, sendToAgent } from "./wsHandler.js";
 import { getState } from "./store.js";
 import {
@@ -50,7 +59,7 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 app.get("/api/auth/verify", auth, (req, res) => {
-  res.json({ valid: true, user: req.user });
+  res.json({ valid: true, user: req.user.user, role: req.user.role });
 });
 
 app.get("/api/system", auth, (req, res) => {
@@ -123,6 +132,36 @@ app.put("/api/config/names", auth, (req, res) => {
   }
   saveCustomNames(names);
   res.json({ ok: true });
+});
+
+app.get("/api/users", auth, requireAdmin, (req, res) => {
+  res.json(getUsers());
+});
+
+app.post("/api/users", auth, requireAdmin, async (req, res) => {
+  const { username, password, role } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: "username e password obrigatórios" });
+  }
+  const result = await addUser(username, password, role || "user");
+  if (result.error) return res.status(409).json(result);
+  res.json(result);
+});
+
+app.put("/api/users/:username", auth, requireAdmin, async (req, res) => {
+  const { password, role } = req.body;
+  const result = await updateUser(req.params.username, { password, role });
+  if (result.error) return res.status(404).json(result);
+  res.json(result);
+});
+
+app.delete("/api/users/:username", auth, requireAdmin, (req, res) => {
+  if (req.params.username === req.user.user) {
+    return res.status(400).json({ error: "Não é possível excluir a si mesmo" });
+  }
+  const result = deleteUser(req.params.username);
+  if (result.error) return res.status(400).json(result);
+  res.json(result);
 });
 
 if (NODE_ENV === "production") {
