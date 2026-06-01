@@ -1,0 +1,14 @@
+{
+  "name": "dash-geral",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install && cd ../relay-agent && npm install",
+    "dev": "concurrently -n API,UI -c cyan,magenta \"cd backend && node src/server.js\" \"cd frontend && npx vite --host\"",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && node src/server.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
