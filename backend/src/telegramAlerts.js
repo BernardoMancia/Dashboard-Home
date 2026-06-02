@@ -81,7 +81,15 @@ async function sendMessage(text, replyMarkup) {
       body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (!data.ok) console.error("[Telegram] Erro ao enviar:", data.description);
+    if (!data.ok) {
+      if (data.parameters?.migrate_to_chat_id) {
+        const newId = data.parameters.migrate_to_chat_id;
+        console.log(`[Telegram] Grupo migrou! Novo chat ID: ${newId} (antigo: ${chatId})`);
+        chatId = String(newId);
+        return sendMessage(text, replyMarkup);
+      }
+      console.error("[Telegram] Erro ao enviar:", data.description);
+    }
   } catch (err) {
     console.error("[Telegram] Falha na comunicação:", err.message);
   }
