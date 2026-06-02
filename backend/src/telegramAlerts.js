@@ -32,6 +32,18 @@ export function initTelegramAlerts(token, groupId, rebootFn) {
   }
 
   console.log("[Telegram] Alertas ativados");
+
+  sendMessage(
+    `🤖 <b>Bot de Monitoramento ONLINE</b>\n\n` +
+    `✅ Sistema de alertas iniciado com sucesso.\n\n` +
+    `📋 <b>Configurações ativas:</b>\n` +
+    `├ CPU/RAM: alerta a partir de <b>${THRESHOLDS.cpu}%</b> (passo: ${THRESHOLDS.stepCpuRam}%)\n` +
+    `├ Temperatura: alerta a partir de <b>${THRESHOLDS.temp}°C</b> (passo: ${THRESHOLDS.stepTemp}°C)\n` +
+    `├ Reinício automático: <b>${THRESHOLDS.tempCritical}°C</b>\n` +
+    `└ Intervalo de verificação: <b>10s</b>\n\n` +
+    `⏰ ${formatTimestamp()}`
+  );
+
   setInterval(checkMetrics, 10000);
   startCallbackPolling();
 }
