@@ -1,6 +1,7 @@
 import WebSocket from "ws";
 import axios from "axios";
 import { readFileSync } from "fs";
+import { execSync } from "child_process";
 
 const VPS_URL = process.env.VPS_URL || "ws://82.112.245.99:3001/ws/agent";
 const WS_SECRET_KEY = process.env.WS_SECRET_KEY || "";
@@ -209,6 +210,18 @@ async function handleCommand(msg) {
         data: { ok: false, error: err.message },
       });
     }
+  }
+
+  if (msg.type === "system_reboot") {
+    console.log("[Agent] Reboot command received, rebooting in 3s...");
+    send({ type: "command_result", data: { ok: true, action: "reboot" } });
+    setTimeout(() => {
+      try {
+        execSync("sudo reboot");
+      } catch (err) {
+        console.error("[Agent] Reboot failed:", err.message);
+      }
+    }, 3000);
   }
 }
 

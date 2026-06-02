@@ -23,6 +23,7 @@ import {
   saveCustomNames,
 } from "./configStore.js";
 import { addLog, getLogs } from "./activityLog.js";
+import { initTelegramAlerts } from "./telegramAlerts.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
@@ -34,6 +35,8 @@ const {
   JWT_SECRET,
   WS_SECRET_KEY,
   NODE_ENV = "development",
+  TELEGRAM_BOT_TOKEN = "",
+  TELEGRAM_CHAT_ID = "",
 } = process.env;
 
 const app = express();
@@ -196,6 +199,16 @@ async function start() {
   await initAuth(DASHBOARD_PASSWORD, JWT_SECRET);
   const server = createServer(app);
   setupWebSocket(server, WS_SECRET_KEY);
+
+  const rebootRpi = () => {
+    const sent = sendToAgent({ type: "system_reboot" });
+    if (!sent) console.error("[Telegram] Reboot falhou: agent desconectado");
+    else console.log("[Telegram] Comando de reboot enviado ao agent");
+    addLog({ user: "telegram_bot", action: "system_reboot", detail: "Reinício via Telegram" });
+  };
+
+  initTelegramAlerts(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, rebootRpi);
+
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`[Server] API running on port ${PORT}`);
     console.log(`[Server] WebSocket ready on /ws/agent`);
