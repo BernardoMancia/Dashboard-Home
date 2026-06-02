@@ -16,10 +16,14 @@ let sendRebootFn = null;
 let lastAlertCpu = null;
 let lastAlertRam = null;
 let lastAlertTemp = null;
-let wasOffline = false;
 let tempHistory = [];
 let pollOffset = 0;
 let pollTimer = null;
+
+let startupSent = false;
+let offlineSince = null;
+let lastOfflineAlert = null;
+const OFFLINE_REPEAT_MS = 3600000;
 
 export function initTelegramAlerts(token, groupId, rebootFn) {
   botToken = token;
@@ -31,21 +35,34 @@ export function initTelegramAlerts(token, groupId, rebootFn) {
     return;
   }
 
-  console.log("[Telegram] Alertas ativados");
+  console.log("[Telegram] Aguardando agent conectar para iniciar monitoramento...");
+  setInterval(checkMetrics, 10000);
+  startCallbackPolling();
+}
+
+function sendStartupMessage(state) {
+  const { cpuUsage, ram, temperature } = state.system;
+  const cpuPct = Math.round(cpuUsage || 0);
+  const ramPct = Math.round(ram?.percent || 0);
+  const temp = Math.round(temperature || 0);
+  const ramTotal = ram?.total ? (ram.total / (1024 * 1024 * 1024)).toFixed(1) : "?";
+  const ramUsed = ram?.used ? (ram.used / (1024 * 1024 * 1024)).toFixed(1) : "?";
 
   sendMessage(
     `🤖 <b>Bot de Monitoramento ONLINE</b>\n\n` +
-    `✅ Sistema de alertas iniciado com sucesso.\n\n` +
+    `✅ Agent conectado — monitoramento iniciado.\n\n` +
+    `📊 <b>Estado atual:</b>\n` +
+    `├ CPU: <b>${cpuPct}%</b>\n` +
+    `├ RAM: <b>${ramPct}%</b> (${ramUsed}/${ramTotal} GB)\n` +
+    `└ Temp: <b>${temp}°C</b>\n\n` +
     `📋 <b>Configurações ativas:</b>\n` +
-    `├ CPU/RAM: alerta a partir de <b>${THRESHOLDS.cpu}%</b> (passo: ${THRESHOLDS.stepCpuRam}%)\n` +
-    `├ Temperatura: alerta a partir de <b>${THRESHOLDS.temp}°C</b> (passo: ${THRESHOLDS.stepTemp}°C)\n` +
+    `├ CPU/RAM: alerta ≥ <b>${THRESHOLDS.cpu}%</b> (passo: ${THRESHOLDS.stepCpuRam}%)\n` +
+    `├ Temperatura: alerta ≥ <b>${THRESHOLDS.temp}°C</b> (passo: ${THRESHOLDS.stepTemp}°C)\n` +
     `├ Reinício automático: <b>${THRESHOLDS.tempCritical}°C</b>\n` +
-    `└ Intervalo de verificação: <b>10s</b>\n\n` +
+    `├ Offline: alerta a cada <b>1 hora</b>\n` +
+    `└ Verificação: a cada <b>10s</b>\n\n` +
     `⏰ ${formatTimestamp()}`
   );
-
-  setInterval(checkMetrics, 10000);
-  startCallbackPolling();
 }
 
 async function sendMessage(text, replyMarkup) {
@@ -86,8 +103,21 @@ function restartButton() {
   };
 }
 
-function formatTimestamp() {
-  return new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+function formatTimestamp(date) {
+  return (date || new Date()).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+}
+
+function formatDuration(ms) {
+  const secs = Math.floor(ms / 1000);
+  if (secs < 60) return `${secs}s`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}min`;
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  if (hours < 24) return `${hours}h ${remMins}min`;
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return `${days}d ${remHours}h ${remMins}min`;
 }
 
 function getTempChangeLastHour() {
@@ -104,24 +134,51 @@ function checkMetrics() {
   const state = getState();
 
   if (!state.connected) {
-    if (!wasOffline) {
-      wasOffline = true;
+    const now = Date.now();
+
+    if (offlineSince === null) {
+      offlineSince = now;
+      lastOfflineAlert = now;
+
+      if (startupSent) {
+        sendMessage(
+          `🔴 <b>ALERTA: Raspberry Pi OFFLINE</b>\n\n` +
+          `O Raspberry Pi ficou inacessível.\n` +
+          `📅 Desconectou em: <b>${formatTimestamp(new Date(offlineSince))}</b>\n` +
+          `⏰ ${formatTimestamp()}`
+        );
+      }
+    } else if (startupSent && now - lastOfflineAlert >= OFFLINE_REPEAT_MS) {
+      const downtime = formatDuration(now - offlineSince);
+      lastOfflineAlert = now;
       sendMessage(
-        `🔴 <b>ALERTA: Raspberry Pi OFFLINE</b>\n\n` +
-        `O Raspberry Pi está inacessível.\n` +
-        `⏰ ${formatTimestamp()}`
+        `🔴 <b>Raspberry Pi continua OFFLINE</b>\n\n` +
+        `📅 Offline desde: <b>${formatTimestamp(new Date(offlineSince))}</b>\n` +
+        `⏱ Tempo offline: <b>${downtime}</b>\n` +
+        `⏰ ${formatTimestamp()}`,
+        restartButton()
       );
     }
     return;
   }
 
-  if (wasOffline) {
-    wasOffline = false;
+  if (!startupSent) {
+    startupSent = true;
+    offlineSince = null;
+    lastOfflineAlert = null;
+    sendStartupMessage(state);
+  } else if (offlineSince !== null) {
+    const now = Date.now();
+    const downtime = formatDuration(now - offlineSince);
     sendMessage(
       `🟢 <b>Raspberry Pi ONLINE</b>\n\n` +
-      `Conexão restabelecida.\n` +
-      `⏰ ${formatTimestamp()}`
+      `Conexão restabelecida!\n\n` +
+      `📅 Caiu em: <b>${formatTimestamp(new Date(offlineSince))}</b>\n` +
+      `📅 Voltou em: <b>${formatTimestamp()}</b>\n` +
+      `⏱ Tempo offline: <b>${downtime}</b>`
     );
+    offlineSince = null;
+    lastOfflineAlert = null;
   }
 
   const { cpuUsage, ram, temperature } = state.system;
