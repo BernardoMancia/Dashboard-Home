@@ -357,6 +357,7 @@ body {
   overflow-x: hidden;
   padding: 28px;
   position: relative;
+  -webkit-overflow-scrolling: touch;
 }
 
 .panel-grid {
@@ -1085,11 +1086,12 @@ h2.section-title::after {
     order: 1;
     height: calc(100dvh - 56px);
     min-height: 0;
+    overflow: hidden;
   }
 
   .content-area {
     padding: 14px;
-    padding-bottom: 12px;
+    padding-bottom: 16px;
   }
 
   .status-bar {
@@ -1102,8 +1104,18 @@ h2.section-title::after {
     gap: 6px;
   }
 
-  .status-bar-title { font-size: 0.78rem; }
+  .status-bar-title {
+    font-size: 0.78rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
   .status-bar-right { display: none; }
+  .status-bar-left {
+    min-width: 0;
+    overflow: hidden;
+  }
 
   .panel-grid,
   .panel-grid-2 {
@@ -1209,7 +1221,6 @@ h2.section-title::after {
 }
 
 .device-card-wrapper:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
   border-color: var(--border-glass-hover);
 }
@@ -1391,18 +1402,19 @@ h2.section-title::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 200;
   animation: fade-in 0.2s ease;
+  padding: 16px;
 }
 
 .modal-content {
   width: 100%;
   max-width: 440px;
   max-height: 80vh;
+  max-height: 80dvh;
   overflow-y: auto;
   padding: 32px;
   animation: slide-in-up 0.3s ease both;
-  margin: 16px;
 }
 
 .modal-title {
@@ -1564,7 +1576,6 @@ h2.section-title::after {
 
   .modal-content {
     max-width: 100%;
-    margin: 12px;
     padding: 24px;
   }
 }
@@ -1604,9 +1615,8 @@ h2.section-title::after {
 
   .modal-content {
     max-width: 100%;
-    margin: 8px;
     padding: 20px;
-    max-height: 85vh;
+    max-height: 75dvh;
   }
 
   .light-controls {
@@ -1616,14 +1626,30 @@ h2.section-title::after {
   .toggle-switch {
     transform: scale(0.85);
   }
+
+  .rename-btn {
+    opacity: 0.5;
+  }
+
+  .icon-picker {
+    gap: 6px;
+  }
+
+  .icon-option {
+    width: 38px;
+    height: 38px;
+    font-size: 18px;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
 }
 
 .ov-layout {
   display: grid;
   grid-template-columns: 300px 1fr 260px;
   gap: 20px;
-  height: 100%;
-  min-height: 0;
 }
 
 .ov-col {
@@ -1909,7 +1935,6 @@ h2.section-title::after {
 }
 
 .ov-quick-btn:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
   border-color: var(--border-glass-hover);
 }
