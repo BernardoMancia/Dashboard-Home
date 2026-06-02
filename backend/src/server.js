@@ -22,6 +22,7 @@ import {
   getCustomNames,
   saveCustomNames,
 } from "./configStore.js";
+import { addLog, getLogs } from "./activityLog.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
@@ -55,6 +56,7 @@ app.post("/api/auth/login", async (req, res) => {
   if (!token) {
     return res.status(401).json({ error: "Credenciais inválidas" });
   }
+  addLog({ user: username, action: "login", detail: "Login realizado" });
   res.json({ token, user: username });
 });
 
@@ -93,6 +95,14 @@ app.post("/api/ha/command", auth, (req, res) => {
   if (!sent) {
     return res.status(503).json({ error: "Agent desconectado" });
   }
+  addLog({
+    user: req.user.user,
+    action: "device_command",
+    entityId,
+    domain,
+    service,
+    serviceData: serviceData || null,
+  });
   res.json({ ok: true });
 });
 
@@ -105,6 +115,11 @@ app.post("/api/pihole/toggle", auth, (req, res) => {
   if (!sent) {
     return res.status(503).json({ error: "Agent desconectado" });
   }
+  addLog({
+    user: req.user.user,
+    action: "pihole_toggle",
+    detail: `${action}${seconds ? ` por ${seconds}s` : ""}`,
+  });
   res.json({ ok: true });
 });
 
@@ -161,7 +176,14 @@ app.delete("/api/users/:username", auth, requireAdmin, (req, res) => {
   }
   const result = deleteUser(req.params.username);
   if (result.error) return res.status(400).json(result);
+  addLog({ user: req.user.user, action: "user_delete", detail: req.params.username });
   res.json(result);
+});
+
+app.get("/api/logs", auth, requireAdmin, (req, res) => {
+  const limit = parseInt(req.query.limit) || 200;
+  const offset = parseInt(req.query.offset) || 0;
+  res.json(getLogs(limit, offset));
 });
 
 if (NODE_ENV === "production") {

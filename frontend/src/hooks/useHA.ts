@@ -54,20 +54,61 @@ export function useHA(token: string | null, interval = 5000) {
     SENSOR_DOMAINS.some((d) => s.entity_id.startsWith(`${d}.`))
   );
 
+  const optimisticToggle = useCallback(
+    (entityId: string, currentState: string) => {
+      const newState = currentState === 'on' ? 'off' : 'on';
+      setData((prev) => ({
+        ...prev,
+        states: prev.states.map((s) =>
+          s.entity_id === entityId ? { ...s, state: newState } : s
+        ),
+      }));
+    },
+    []
+  );
+
+  const optimisticBrightness = useCallback(
+    (entityId: string, brightness: number) => {
+      setData((prev) => ({
+        ...prev,
+        states: prev.states.map((s) =>
+          s.entity_id === entityId
+            ? { ...s, state: 'on', attributes: { ...s.attributes, brightness } }
+            : s
+        ),
+      }));
+    },
+    []
+  );
+
+  const optimisticColor = useCallback(
+    (entityId: string, rgb: [number, number, number]) => {
+      setData((prev) => ({
+        ...prev,
+        states: prev.states.map((s) =>
+          s.entity_id === entityId
+            ? { ...s, state: 'on', attributes: { ...s.attributes, rgb_color: rgb } }
+            : s
+        ),
+      }));
+    },
+    []
+  );
+
   const sendCommand = useCallback(
     async (domain: string, service: string, entityId: string, serviceData?: Record<string, unknown>) => {
       if (!token) return;
-      await fetch(`${API}/api/ha/command`, {
+      fetch(`${API}/api/ha/command`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ domain, service, entityId, serviceData }),
-      });
+      }).catch(() => {});
     },
     [token]
   );
 
-  return { ...data, controllable, sensors, sendCommand };
+  return { ...data, controllable, sensors, sendCommand, optimisticToggle, optimisticBrightness, optimisticColor };
 }

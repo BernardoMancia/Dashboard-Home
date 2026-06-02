@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { id: 'pihole', icon: '🛡', label: 'Pi-hole', adminOnly: false },
   { id: 'ha', icon: '🏠', label: 'Cômodos', adminOnly: false },
   { id: 'sensors', icon: '📡', label: 'Sensores', adminOnly: false },
+  { id: 'logs', icon: '📋', label: 'Logs', adminOnly: true },
   { id: 'users', icon: '👥', label: 'Usuários', adminOnly: true },
 ];
 

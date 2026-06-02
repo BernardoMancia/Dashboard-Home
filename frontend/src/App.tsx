@@ -15,6 +15,7 @@ import PiHolePanel from './components/PiHolePanel';
 import HomeAssistantPanel from './components/HomeAssistantPanel';
 import SensorsPanel from './components/SensorsPanel';
 import UsersPanel from './components/UsersPanel';
+import LogsPanel from './components/LogsPanel';
 
 const PANEL_TITLES: Record<string, string> = {
   overview: '📊 Overview — Visão Geral',
@@ -23,6 +24,7 @@ const PANEL_TITLES: Record<string, string> = {
   ha: '🏠 Cômodos & Dispositivos',
   sensors: '📡 Sensores & Monitoramento',
   users: '👥 Gerenciamento de Usuários',
+  logs: '📋 Registro de Atividades',
 };
 
 export default function App() {
@@ -52,16 +54,19 @@ export default function App() {
   }
 
   function handleToggle(entityId: string, currentState: string) {
+    ha.optimisticToggle(entityId, currentState);
     const domain = entityId.split('.')[0];
     const service = currentState === 'on' ? 'turn_off' : 'turn_on';
     ha.sendCommand(domain, service, entityId);
   }
 
   function handleBrightness(entityId: string, brightness: number) {
+    ha.optimisticBrightness(entityId, brightness);
     ha.sendCommand('light', 'turn_on', entityId, { brightness });
   }
 
   function handleColor(entityId: string, rgb: [number, number, number]) {
+    ha.optimisticColor(entityId, rgb);
     ha.sendCommand('light', 'turn_on', entityId, { rgb_color: rgb });
   }
 
@@ -121,6 +126,9 @@ export default function App() {
           )}
           {activePanel === 'users' && isAdmin && (
             <UsersPanel token={token} />
+          )}
+          {activePanel === 'logs' && isAdmin && (
+            <LogsPanel token={token} />
           )}
         </div>
       </div>
